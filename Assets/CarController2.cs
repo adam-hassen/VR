@@ -1,38 +1,106 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class CarController2 : MonoBehaviour
+[RequireComponent(typeof(Rigidbody))]
+public class WorkingCarController : MonoBehaviour
 {
-    public Transform rouesAvant;
-    public Transform rouesArriere;
+    [Header("WHEELS (WheelCollider ONLY)")]
+    public WheelCollider frontLeft;
+    public WheelCollider frontRight;
+    public WheelCollider rearLeft;
+    public WheelCollider rearRight;
 
-    public float vitesse = 10f;
-    public float rotationVitesse = 50f;
-    // Start is called before the first frame update
+    [Header("CAR SETTINGS")]
+    public float motorPower = 1500f;
+    public float steeringAngle = 30f;
+    public float brakePower = 3000f;
+
+    private Rigidbody rb;
+
     void Start()
     {
-        
+        rb = GetComponent<Rigidbody>();
+
+        // Rigidbody SAFE SETTINGS
+        rb.mass = 1200f;
+        rb.drag = 0.05f;
+        rb.angularDrag = 0.5f;
+        rb.useGravity = true;
+        rb.isKinematic = false;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rb.centerOfMass = new Vector3(0, -0.4f, 0);
+
+        ConfigureWheel(frontLeft);
+        ConfigureWheel(frontRight);
+        ConfigureWheel(rearLeft);
+        ConfigureWheel(rearRight);
+
+        Debug.Log("✅ CAR READY – PRESS Z TO MOVE");
     }
 
-    // Update is called once per frame
-    void Update()
+    void ConfigureWheel(WheelCollider wheel)
     {
-        // avancer / reculer
-        float vertical = Input.GetAxis("Vertical");
-        transform.Translate(Vector3.forward * vertical * vitesse * Time.deltaTime);
+        if (wheel == null) return;
 
-        // tourner gauche droite
-        float horizontal = Input.GetAxis("Horizontal");
-        transform.Rotate(Vector3.up * horizontal * rotationVitesse * Time.deltaTime);
+        wheel.radius = 0.4f;
+        wheel.suspensionDistance = 0.25f;
+        wheel.mass = 40f;
 
-        // faire tourner les roues
-        float rotationRoues = vertical * 300f * Time.deltaTime;
+        JointSpring spring = wheel.suspensionSpring;
+        spring.spring = 35000f;
+        spring.damper = 4500f;
+        wheel.suspensionSpring = spring;
 
-        if (rouesAvant != null)
-            rouesAvant.Rotate(Vector3.right * rotationRoues);
+        WheelFrictionCurve forward = wheel.forwardFriction;
+        forward.extremumSlip = 0.4f;
+        forward.extremumValue = 1.2f;
+        forward.asymptoteSlip = 0.8f;
+        forward.asymptoteValue = 0.6f;
+        forward.stiffness = 1.5f;
+        wheel.forwardFriction = forward;
 
-        if (rouesArriere != null)
-            rouesArriere.Rotate(Vector3.right * rotationRoues);
+        WheelFrictionCurve side = wheel.sidewaysFriction;
+        side.extremumSlip = 0.2f;
+        side.extremumValue = 1.1f;
+        side.asymptoteSlip = 0.5f;
+        side.asymptoteValue = 0.75f;
+        side.stiffness = 1.3f;
+        wheel.sidewaysFriction = side;
+    }
+
+    void FixedUpdate()
+    {
+        float accel = Input.GetAxis("Vertical");   // Z / S
+        float steer = Input.GetAxis("Horizontal"); // Q / D
+        bool brake = Input.GetKey(KeyCode.Space);
+
+        // STEERING
+        frontLeft.steerAngle = steer * steeringAngle;
+        frontRight.steerAngle = steer * steeringAngle;
+
+        // MOTOR (REAR WHEEL DRIVE)
+        rearLeft.motorTorque = accel * motorPower;
+        rearRight.motorTorque = accel * motorPower;
+
+        // BRAKE
+        float brakeTorque = brake ? brakePower : 0f;
+        frontLeft.brakeTorque = brakeTorque;
+        frontRight.brakeTorque = brakeTorque;
+        rearLeft.brakeTorque = brakeTorque;
+        rearRight.brakeTorque = brakeTorque;
+    }
+
+    void OnGUI()
+    {
+        int grounded = 0;
+        if (frontLeft.isGrounded) grounded++;
+        if (frontRight.isGrounded) grounded++;
+        if (rearLeft.isGrounded) grounded++;
+        if (rearRight.isGrounded) grounded++;
+
+        GUI.color = Color.green;
+        GUI.Label(new Rect(10, 10, 400, 30), $"🚗 CAR ACTIVE – {grounded}/4 WHEELS GROUNDED");
+        GUI.Label(new Rect(10, 40, 400, 30), $"SPEED: {(rb.velocity.magnitude * 3.6f):F0} km/h");
+        GUI.Label(new Rect(10, 70, 500, 30), "Z=ACCEL | S=REVERSE | Q/D=STEER | SPACE=BRAKE");
     }
 }
