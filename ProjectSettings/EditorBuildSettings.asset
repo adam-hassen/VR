@@ -11,4 +11,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/GalaxyBox1/examplescene.unity
     guid: 0873bbca3a6c54687ac70020a09049e4
-  m_configObjects: {}
+  m_configObjects:
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 573326c0920d1d442949b375a39095eb, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 50988c4060c8b164d881c49183e7a8d7, type: 2}
